@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#080810">
+<title>CineList — Séries</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080810; --surface: #10101c; --surface2: #181828; --border: #252538;
+  --accent: #e63946; --purple: #818cf8; --text: #f0f0f8; --muted: #5a5a7a;
+  --green: #2ec27e; --accent2: #f4a261;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:200;background:rgba(8,8,16,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:calc(var(--safe-top) + 10px) 14px 10px;display:flex;align-items:center;gap:8px}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.logo-accent{color:var(--purple)}
+.logo-sub{font-size:.72rem;color:var(--muted);letter-spacing:3px;font-family:'Bebas Neue',sans-serif}
+.header-nav{display:flex;gap:5px;margin-left:auto;flex-shrink:0}
+.nav-sm{display:inline-flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:.7rem;font-weight:700;color:var(--muted);text-decoration:none;white-space:nowrap;gap:4px}
+.nav-sm.red{background:rgba(230,57,70,.08);border-color:rgba(230,57,70,.3);color:var(--accent)}
+.hstat{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:4px 9px;font-size:.68rem;color:var(--muted);flex-shrink:0}
+.hstat strong{font-family:'Bebas Neue',sans-serif;font-size:.92rem}
+.hstat.grn strong{color:var(--green)}
+.hstat.pur strong{color:var(--purple)}
+
+/* MAIN */
+.main{padding:12px 12px calc(var(--safe-bot) + 78px)}
+
+/* SEARCH BAR */
+.search-bar{position:relative;margin-bottom:10px}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);width:16px;height:16px;pointer-events:none}
+.search-bar input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:13px 13px 13px 40px;outline:none;transition:border-color .2s}
+.search-bar input:focus{border-color:var(--purple)}
+.search-bar input::placeholder{color:var(--muted)}
+
+/* FILTERS ROW */
+.filters{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.filters::-webkit-scrollbar{display:none}
+.fpill{background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.73rem;font-weight:600;padding:8px 14px;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.fpill.active{background:rgba(129,140,248,.15);border-color:var(--purple);color:var(--purple)}
+.sort-sel{background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.73rem;padding:8px 28px 8px 12px;outline:none;cursor:pointer;flex-shrink:0;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a5a7a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+
+/* STATUS */
+.status-bar{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:10px;margin-bottom:10px;font-size:.78rem}
+.status-bar.loading{background:rgba(129,140,248,.08);border:1px solid rgba(129,140,248,.2);color:var(--purple)}
+.status-bar.ok{background:rgba(46,194,126,.08);border:1px solid rgba(46,194,126,.2);color:var(--green)}
+.status-bar.err{background:rgba(230,57,70,.08);border:1px solid rgba(230,57,70,.2);color:var(--accent)}
+.status-bar.hidden{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{width:13px;height:13px;border:2px solid rgba(129,140,248,.3);border-top-color:var(--purple);border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0}
+
+.rinfo{font-size:.73rem;color:var(--muted);margin-bottom:10px;padding-left:2px}
+.rinfo strong{color:var(--text)}
+
+/* SERIES LIST */
+.series-list{display:flex;flex-direction:column;gap:12px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARD */
+.serie-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;animation:fadeUp .3s ease both}
+.serie-main{display:flex}
+.serie-poster-wrap{width:96px;flex-shrink:0}
+.serie-poster{width:96px;height:100%;min-height:144px;object-fit:cover;display:block}
+.serie-no-poster{width:96px;min-height:144px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:.52rem}
+.serie-no-poster svg{opacity:.2}
+.serie-body{flex:1;padding:12px 13px;display:flex;flex-direction:column;gap:7px;min-width:0}
+.serie-title{font-weight:700;font-size:.95rem;line-height:1.3}
+.serie-meta{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.chip{font-size:.58rem;font-weight:700;border-radius:4px;padding:2px 6px;text-transform:uppercase;letter-spacing:.3px}
+.chip-year{background:var(--surface2);color:var(--muted)}
+.chip-rating{background:rgba(251,191,36,.1);color:#fbbf24}
+.chip-eps{background:rgba(244,162,97,.12);color:var(--accent2)}
+.chip-progress{background:rgba(46,194,126,.1);color:var(--green)}
+.chip-zero{background:rgba(90,90,122,.2);color:var(--muted)}
+.chip-purple{background:rgba(129,140,248,.12);color:var(--purple)}
+.pbar{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.pfill{height:100%;background:var(--purple);border-radius:2px;transition:width .3s}
+.pfill.full{background:var(--green)}
+
+/* SEASONS */
+.seasons-section{border-top:1px solid var(--border)}
+.seasons-toggle{display:flex;align-items:center;gap:8px;padding:12px 14px;background:none;border:none;width:100%;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:600;text-align:left;min-height:48px}
+.seasons-toggle:active{background:var(--surface2)}
+.tog-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.tog-fill{height:100%;background:var(--purple);border-radius:2px}
+.tog-fill.full{background:var(--green)}
+.seasons-body{display:none}
+.seasons-body.open{display:block}
+.season-block{border-bottom:1px solid var(--border)}
+.season-block:last-child{border-bottom:none}
+.season-label{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:.72rem;font-weight:700;background:rgba(255,255,255,.02)}
+.s-prog{font-size:.6rem;background:var(--border);border-radius:3px;padding:1px 6px;color:var(--muted);margin-left:auto}
+.s-prog.done{background:rgba(46,194,126,.15);color:var(--green)}
+.eps-grid{display:flex;flex-direction:column}
+.ep-row{display:flex;align-items:center;gap:7px;padding:9px 14px;border-bottom:1px solid rgba(37,37,56,.5);min-height:44px}
+.ep-row:last-child{border-bottom:none}
+.ep-num{font-family:monospace;font-size:.63rem;color:var(--muted);min-width:28px;flex-shrink:0}
+.ep-name{font-size:.74rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ep-play{display:inline-flex;align-items:center;gap:4px;background:rgba(46,194,126,.1);border:1px solid rgba(46,194,126,.3);border-radius:7px;padding:6px 12px;font-size:.65rem;font-weight:700;color:var(--green);text-decoration:none;white-space:nowrap;flex-shrink:0;min-height:34px}
+.ep-nolink{font-size:.6rem;color:var(--muted);flex-shrink:0}
+
+/* CARD ACTIONS */
+.card-actions{display:flex;border-top:1px solid var(--border)}
+.ca-btn{flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;gap:4px;background:none;border:none;border-right:1px solid var(--border);font-family:'DM Sans',sans-serif;font-size:.68rem;font-weight:700;cursor:pointer;color:var(--muted);padding:0 4px;transition:background .15s;text-align:center}
+.ca-btn:last-child{border-right:none}
+.ca-btn:active{background:var(--surface2)}
+.ca-idx{color:var(--purple) !important}
+.ca-eps{color:var(--accent2) !important}
+.ca-mon{color:var(--green) !important}
+.ca-mon.on{background:rgba(46,194,126,.08) !important}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:70px 24px;color:var(--muted)}
+.empty-icon{font-size:2.8rem;opacity:.2;margin-bottom:14px}
+.empty-state h3{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;margin-bottom:6px;color:var(--text)}
+.empty-state p{font-size:.82rem;font-style:italic;line-height:1.5}
+
+/* BOTTOM BAR */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:300;background:rgba(8,8,16,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:8px 12px calc(var(--safe-bot) + 8px);display:flex;gap:8px}
+.bbar-btn{flex:1;min-height:46px;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.bbar-btn svg{width:14px;height:14px;flex-shrink:0}
+.bbar-btn:active{opacity:.7;transform:scale(.97)}
+.bbar-gh{background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.35);color:#3fb950}
+.bbar-mon{background:rgba(46,194,126,.08);border-color:rgba(46,194,126,.25);color:var(--green)}
+.bbar-btn:disabled{opacity:.45;pointer-events:none}
+
+/* SHEET */
+.sheet-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.72);display:none;align-items:flex-end}
+.sheet-overlay.open{display:flex}
+.sheet{background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-height:90dvh;overflow-y:auto;padding:0 0 calc(var(--safe-bot) + 16px);animation:sheetUp .28s cubic-bezier(.34,1.56,.64,1)}
+@keyframes sheetUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 4px}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 14px;font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:2px}
+.sheet-close{background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;justify-content:center}
+.sheet-body{padding:0 16px 8px}
+.cfg-label{font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;display:block}
+.cfg-field{margin-bottom:13px}
+.cfg-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:12px 13px;outline:none;transition:border-color .2s}
+.cfg-input:focus{border-color:#3fb950}
+.cfg-input::placeholder{color:var(--muted)}
+.cfg-save{width:100%;background:#3fb950;border:none;border-radius:11px;color:#000;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.9rem;padding:14px;cursor:pointer;margin-top:4px}
+.cfg-hint{font-size:.68rem;color:var(--muted);margin-top:10px;line-height:1.5}
+
+/* MONITOR SHEET */
+.mon-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.mon-head-info{flex:1}
+.mon-title{font-size:.82rem;font-weight:700;color:var(--green)}
+.mon-sub{font-size:.68rem;color:var(--muted);margin-top:2px}
+.tmdb-check-btn{background:rgba(46,194,126,.1);border:1px solid rgba(46,194,126,.3);border-radius:10px;color:var(--green);font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:700;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:6px;min-height:44px;flex-shrink:0}
+.tmdb-check-btn:disabled{opacity:.5}
+.tmdb-results-list{display:flex;flex-direction:column;gap:8px}
+.tri{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;align-items:center;gap:10px}
+.tri.new{border-color:rgba(244,162,97,.45)}
+.tri-thumb{width:38px;height:57px;object-fit:cover;border-radius:6px;flex-shrink:0}
+.tri-info{flex:1;min-width:0}
+.tri-title{font-size:.8rem;font-weight:700}
+.tri-detail{margin-top:5px;display:flex;gap:5px;flex-wrap:wrap}
+.nbadge{background:rgba(244,162,97,.18);border:1px solid rgba(244,162,97,.4);border-radius:5px;color:var(--accent2);font-size:.6rem;font-weight:700;padding:2px 8px}
+.okbadge{background:rgba(46,194,126,.1);border:1px solid rgba(46,194,126,.25);border-radius:5px;color:var(--green);font-size:.6rem;font-weight:700;padding:2px 8px}
+
+/* MODAL EDIT */
+.modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);display:none;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border-top:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-height:93dvh;overflow-y:auto;animation:sheetUp .28s cubic-bezier(.34,1.56,.64,1);padding-bottom:calc(var(--safe-bot) + 20px)}
+.modal-head{position:sticky;top:0;z-index:10;background:var(--surface);padding:0 15px 12px;border-bottom:1px solid var(--border)}
+.modal-drag{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 13px}
+.modal-head-row{display:flex;align-items:center;gap:11px}
+.modal-head-poster{width:44px;height:66px;object-fit:cover;border-radius:7px;flex-shrink:0}
+.modal-head-noposter{width:44px;height:66px;border-radius:7px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.5rem;color:var(--muted)}
+.modal-head-info{flex:1;min-width:0}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:1.5px;line-height:1.2}
+.modal-subtitle{font-size:.65rem;color:var(--muted);margin-top:3px}
+.modal-close{background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:31px;height:31px;min-width:31px;cursor:pointer;color:var(--muted);font-size:12px;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:15px}
+.msec-title{font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:2px;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.msec-title span{flex:1;height:1px;background:var(--border)}
+.mseas-block{background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.mseas-head{display:flex;align-items:center;gap:8px;padding:13px 13px;cursor:pointer;min-height:48px;font-size:.79rem;font-weight:700}
+.mseas-head:active{background:rgba(255,255,255,.03)}
+.mseas-tag{background:rgba(129,140,248,.15);color:var(--purple);border-radius:4px;padding:2px 8px;font-size:.62rem;flex-shrink:0}
+.mseas-prog{font-size:.63rem;color:var(--muted);margin-left:auto}
+.mseas-prog.done{color:var(--green)}
+.mseas-arr{font-size:.55rem;color:var(--muted);margin-left:5px;transition:transform .2s}
+.mseas-head.open .mseas-arr{transform:rotate(180deg)}
+.mseas-body{display:none;border-top:1px solid var(--border)}
+.mseas-body.open{display:block}
+.mep-row{padding:10px 13px;border-bottom:1px solid rgba(37,37,56,.6);min-height:48px}
+.mep-row:last-child{border-bottom:none}
+.mep-top{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.mep-num{font-family:monospace;font-size:.63rem;color:var(--muted);min-width:28px;flex-shrink:0}
+.mep-name{font-size:.75rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mep-bot{display:flex;gap:6px;align-items:center}
+.mep-inp{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:8px 10px;outline:none;min-height:38px}
+.mep-inp:focus{border-color:var(--purple)}
+.mep-inp::placeholder{color:var(--muted);font-size:.7rem}
+.mep-ok{background:var(--purple);border:none;border-radius:8px;color:#fff;font-size:.72rem;font-weight:800;padding:0 14px;cursor:pointer;min-height:38px;flex-shrink:0}
+.mep-has{display:flex;align-items:center;gap:7px}
+.mep-play{display:inline-flex;align-items:center;gap:4px;background:rgba(46,194,126,.1);border:1px solid rgba(46,194,126,.28);border-radius:7px;padding:6px 12px;font-size:.68rem;font-weight:700;color:var(--green);text-decoration:none;min-height:36px}
+.mep-edit{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.63rem;text-decoration:underline;padding:0;min-height:36px}
+.modal-add-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.modal-add-input{flex:1;min-width:100px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:11px 12px;outline:none}
+.modal-add-btn{background:rgba(244,162,97,.12);border:1px solid rgba(244,162,97,.35);border-radius:10px;color:var(--accent2);font-family:'DM Sans',sans-serif;font-size:.76rem;font-weight:700;padding:11px 14px;cursor:pointer;white-space:nowrap;min-height:44px}
+.modal-tmdb-btn{width:100%;background:rgba(46,194,126,.1);border:1px solid rgba(46,194,126,.3);border-radius:11px;color:var(--green);font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:700;padding:13px;cursor:pointer;margin-top:9px;display:flex;align-items:center;justify-content:center;gap:7px;min-height:48px}
+.modal-tmdb-btn:disabled{opacity:.5}
+#tmdbFetchStatus{font-size:.7rem;color:var(--muted);margin-top:7px;min-height:18px}
+.modal-actions{display:flex;gap:7px;margin-top:15px}
+.modal-btn-send{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.35);border-radius:12px;color:#3fb950;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:700;padding:13px;cursor:pointer;min-height:48px}
+.modal-btn-cancel{background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;padding:13px 18px;cursor:pointer;min-height:48px}
+.modal-btn-gh{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.35);border-radius:12px;color:#3fb950;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:700;padding:13px;cursor:pointer;min-height:48px}
+
+/* TOAST */
+#toast{position:fixed;bottom:calc(var(--safe-bot) + 76px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--border);border-radius:24px;padding:10px 18px;font-size:.82rem;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:9000;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+#toast.success{border-color:var(--green)}
+#toast.error{border-color:var(--accent)}
+.tdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.success .tdot{background:var(--green)}
+.error .tdot{background:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Cine<span class="logo-accent">List</span><span class="logo-sub">Séries</span></div>
+  <div class="header-nav">
+    <a class="nav-sm red" href="filmes-github.html">🎬</a>
+  </div>
+  <div class="hstat pur" style="margin-left:6px"><strong id="totalCount">0</strong>&nbsp;séries</div>
+  <div class="hstat grn"><strong id="linkedEps">0</strong>&nbsp;links</div>
+</header>
+
+<div class="main">
+  <div class="search-bar">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="search" id="searchInput" placeholder="Buscar série..." oninput="filterRender()" autocomplete="off" autocorrect="off" autocapitalize="none"/>
+  </div>
+  <div class="filters">
+    <button class="fpill" id="btnComLink" onclick="toggleFilter('link')">✅ Com link</button>
+    <button class="fpill" id="btnSemLink" onclick="toggleFilter('nolink')">⏳ Sem link</button>
+    <select class="sort-sel" id="sortSelect" onchange="filterRender()">
+      <option value="default">Ordem original</option>
+      <option value="title">A–Z</option>
+      <option value="title_desc">Z–A</option>
+      <option value="year_desc">Mais recentes</option>
+      <option value="year_asc">Mais antigos</option>
+      <option value="rating">Melhor nota</option>
+      <option value="eps_desc">+ Episódios</option>
+      <option value="progress">Mais completo</option>
+    </select>
+  </div>
+  <div class="status-bar hidden" id="statusBar"></div>
+  <div class="rinfo" id="resultsInfo"></div>
+  <div id="seriesList">
+    <div class="empty-state">
+      <div class="empty-icon">📺</div>
+      <h3>Nenhuma Série</h3>
+      <p>Toque em "GitHub" abaixo para carregar</p>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <button class="bbar-btn bbar-gh" id="loadBtn" onclick="loadFromGithub()">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+    GitHub
+  </button>
+  <button class="bbar-btn bbar-mon" id="monitorBtn" onclick="openMonitorSheet()">🔔 Monitor</button>
+  <button class="bbar-btn" onclick="openConfigSheet()">⚙️ Config</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast"><div class="tdot"></div><span id="toastMsg"></span></div>
+
+<!-- CONFIG SHEET -->
+<div class="sheet-overlay" id="configSheet" onclick="if(event.target===this)closeConfigSheet()">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">⚙️ Configuração GitHub<button class="sheet-close" onclick="closeConfigSheet()">✕</button></div>
+    <div class="sheet-body">
+      <div class="cfg-field">
+        <span class="cfg-label">Token (PAT)</span>
+        <input class="cfg-input" id="cfgToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off"/>
+        <p class="cfg-hint" style="margin-top:5px">Gere em github.com/settings/tokens (permissão: repo)</p>
+      </div>
+      <div class="cfg-field">
+        <span class="cfg-label">Repositório (usuário/repo)</span>
+        <input class="cfg-input" id="cfgRepo" type="text" placeholder="usuario/repositorio" autocomplete="off" autocorrect="off" autocapitalize="none"/>
+      </div>
+      <div class="cfg-field">
+        <span class="cfg-label">Pasta (opcional)</span>
+        <input class="cfg-input" id="cfgPath" type="text" placeholder="data"/>
+      </div>
+      <div class="cfg-field">
+        <span class="cfg-label">Branch (opcional)</span>
+        <input class="cfg-input" id="cfgBranch" type="text" placeholder="main"/>
+      </div>
+      <button class="cfg-save" onclick="saveConfig()">Salvar</button>
+      <p class="cfg-hint">O arquivo <strong>series.json</strong> deve estar no repositório.</p>
+    </div>
+  </div>
+</div>
+
+<!-- MONITOR SHEET -->
+<div class="sheet-overlay" id="monitorSheet" onclick="if(event.target===this)closeMonitorSheet()">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">🔔 Monitor TMDB<button class="sheet-close" onclick="closeMonitorSheet()">✕</button></div>
+    <div class="sheet-body">
+      <div class="mon-head">
+        <div class="mon-head-info">
+          <div class="mon-title">Novidades de Temporadas e Episódios</div>
+          <div class="mon-sub">Ative "Monitor" nos cards para acompanhar séries</div>
+        </div>
+        <button class="tmdb-check-btn" id="tmdbCheckBtn" onclick="checkAllUpdates()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.28-4.8"/></svg>
+          Verificar
+        </button>
+      </div>
+      <div id="tmdbMonitorResults"><p style="font-size:.76rem;color:var(--muted);font-style:italic">Toque em Verificar para checar novidades.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIÇÃO -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-drag"></div>
+      <div class="modal-head-row">
+        <div id="editModalPoster"></div>
+        <div class="modal-head-info">
+          <div class="modal-title" id="editModalTitle">Editar Série</div>
+          <div class="modal-subtitle" id="editModalSubtitle"></div>
+        </div>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="editModalBody"></div>
+  </div>
+</div>
+
+<script>
+const TMDB_KEY_SG='c311ad203b7db4a3bf1e1275ecdf41de';
+const TMDB_BASE_SG='https://api.themoviedb.org/3';
+const TMDB_IMG_SG='https://image.tmdb.org/t/p/w342';
+const GH_TOKEN='';
+
+let allSeries=[],activeFilter=null;
+
+// Config
+let ghCfg={repo:'',path:'',token:'',branch:''};
+try{const c=localStorage.getItem('cinelist_series_cfg');if(c)ghCfg={...ghCfg,...JSON.parse(c)};}catch(e){}
+// Sempre lê token e repo do config compartilhado do index.html
+try{const s=localStorage.getItem('cinelist_gh_config');if(s){const p=JSON.parse(s);
+  if(!ghCfg.repo)ghCfg.repo=p.repo||'';
+  if(!ghCfg.path)ghCfg.path=p.path||'';
+  if(!ghCfg.token)ghCfg.token=p.token||'';
+  if(!ghCfg.branch)ghCfg.branch=p.branch||'';
+}}catch(e){}
+
+// WatchList
+let watchList={};
+try{const w=localStorage.getItem('cinelist_tmdb_watchlist');if(w)watchList=JSON.parse(w);}catch(e){}
+function saveWatchList(){localStorage.setItem('cinelist_tmdb_watchlist',JSON.stringify(watchList));}
+function isWatching(id){return !!watchList[id];}
+
+// Sheets
+function openConfigSheet(){loadConfigUI();document.getElementById('configSheet').classList.add('open');}
+function closeConfigSheet(){document.getElementById('configSheet').classList.remove('open');}
+function openMonitorSheet(){document.getElementById('monitorSheet').classList.add('open');}
+function closeMonitorSheet(){document.getElementById('monitorSheet').classList.remove('open');}
+
+function saveConfig(){
+  ghCfg.repo=document.getElementById('cfgRepo').value.trim();
+  ghCfg.path=document.getElementById('cfgPath').value.trim().replace(/^\/|\/$/g,'');
+  ghCfg.token=document.getElementById('cfgToken').value.trim();
+  ghCfg.branch=document.getElementById('cfgBranch').value.trim();
+  localStorage.setItem('cinelist_series_cfg',JSON.stringify(ghCfg));
+  // Também salva no config compartilhado para os outros arquivos usarem
+  const shared={repo:ghCfg.repo,path:ghCfg.path,token:ghCfg.token,branch:ghCfg.branch};
+  localStorage.setItem('cinelist_gh_config',JSON.stringify(shared));
+  showToast('Configuração salva!','success');closeConfigSheet();
+}
+function loadConfigUI(){
+  document.getElementById('cfgRepo').value=ghCfg.repo||'';
+  document.getElementById('cfgPath').value=ghCfg.path||'';
+  document.getElementById('cfgToken').value=ghCfg.token||'';
+  document.getElementById('cfgBranch').value=ghCfg.branch||'';
+}
+
+// GitHub
+function ghFilePath(){return(ghCfg.path?ghCfg.path+'/':'')+'series.json';}
+function setStatus(type,msg){const el=document.getElementById('statusBar');el.className='status-bar '+type;el.innerHTML=(type==='loading'?'<div class="spin"></div>':'')+`<span>${msg}</span>`;}
+function hideStatus(){document.getElementById('statusBar').className='status-bar hidden';}
+
+async function loadFromGithub(){
+  if(!ghCfg.repo){openConfigSheet();showToast('Configure o repositório','error');return;}
+  const btn=document.getElementById('loadBtn');
+  btn.disabled=true;btn.innerHTML='⏳ Carregando...';
+  setStatus('loading',`Carregando de ${ghCfg.repo}...`);
+  try{
+    const branch=ghCfg.branch?`?ref=${encodeURIComponent(ghCfg.branch)}`:'';
+    const url=`https://api.github.com/repos/${ghCfg.repo}/contents/${ghFilePath()}${branch}`;
+    const headers={'Accept':'application/vnd.github.v3+json'};
+    const tok=ghCfg.token||GH_TOKEN;
+    if(tok)headers['Authorization']=`Bearer ${tok}`;
+    const res=await fetch(url,{headers});
+    if(!res.ok){const e=await res.json();setStatus('err',res.status===404?'Arquivo não encontrado':`Erro ${res.status}`);return;}
+    const d=await res.json();
+    const decoded=JSON.parse(decodeURIComponent(escape(atob(d.content.replace(/\n/g,'')))));
+    const rawSeries=Array.isArray(decoded)?decoded:(decoded.series||[]);
+    allSeries=rawSeries.map(s=>({...s,type:'serie'}));
+    setStatus('ok',`✓ ${allSeries.length} séries`);
+    setTimeout(hideStatus,2500);
+    updateCounters();filterRender();
+    showToast(`${allSeries.length} séries carregadas!`,'success');
+    enrichPosters();
+    setTimeout(autoCheckOnLoad,1500);
+  }catch(e){setStatus('err','Erro: '+e.message);}
+  finally{
+    btn.disabled=false;
+    btn.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg> GitHub';
+  }
+}
+
+async function enrichPosters(){
+  const sem=allSeries.filter(s=>(!s.poster&&s.id)||(s.poster_path&&!s.poster));
+  if(!sem.length)return;
+  let buscar=[];
+  sem.forEach(s=>{if(s.poster_path)s.poster=TMDB_IMG_SG+s.poster_path;else if(s.id)buscar.push(s);});
+  if(sem.length-buscar.length>0)filterRender();
+  for(const s of buscar){
+    try{
+      const r=await fetch(`${TMDB_BASE_SG}/tv/${s.id}?api_key=${TMDB_KEY_SG}&language=pt-BR`);
+      if(!r.ok)continue;
+      const d=await r.json();
+      if(d.poster_path){s.poster=TMDB_IMG_SG+d.poster_path;s.poster_path=d.poster_path;}
+      if(!s.nota&&!s.vote_average&&d.vote_average)s.vote_average=d.vote_average;
+      if(!s.ano&&!s.year&&d.first_air_date)s.year=d.first_air_date.slice(0,4);
+      await new Promise(r=>setTimeout(r,80));
+    }catch(e){}
+  }
+  if(buscar.length>0)filterRender();
+}
+
+function getTitle(s){return s.titulo||s.title||'';}
+function getStats(s){
+  const seasons=s.seasons||[];
+  const totalEps=seasons.reduce((a,se)=>a+(se.episodes||[]).length,0);
+  const linkedEps=seasons.reduce((a,se)=>a+(se.episodes||[]).filter(e=>(e.link||e.video_link||'').trim()).length,0);
+  return{totalEps,linkedEps,seasons};
+}
+function updateCounters(){
+  document.getElementById('totalCount').textContent=allSeries.length;
+  let le=0;allSeries.forEach(s=>{le+=getStats(s).linkedEps;});
+  document.getElementById('linkedEps').textContent=le;
+}
+function toggleFilter(type){
+  activeFilter=activeFilter===type?null:type;
+  document.getElementById('btnComLink').classList.toggle('active',activeFilter==='link');
+  document.getElementById('btnSemLink').classList.toggle('active',activeFilter==='nolink');
+  filterRender();
+}
+function filterRender(){
+  const q=document.getElementById('searchInput').value.trim().toLowerCase();
+  const sort=document.getElementById('sortSelect').value;
+  let list=allSeries.slice();
+  if(q)list=list.filter(s=>getTitle(s).toLowerCase().includes(q)||String(s.id).includes(q));
+  if(activeFilter==='link')list=list.filter(s=>getStats(s).linkedEps>0);
+  if(activeFilter==='nolink')list=list.filter(s=>getStats(s).linkedEps===0);
+  if(sort==='title')list.sort((a,b)=>getTitle(a).localeCompare(getTitle(b)));
+  else if(sort==='title_desc')list.sort((a,b)=>getTitle(b).localeCompare(getTitle(a)));
+  else if(sort==='year_desc')list.sort((a,b)=>(b.ano||b.year||'0').localeCompare(a.ano||a.year||'0'));
+  else if(sort==='year_asc')list.sort((a,b)=>(a.ano||a.year||'0').localeCompare(b.ano||b.year||'0'));
+  else if(sort==='rating')list.sort((a,b)=>(b.nota||b.vote_average||0)-(a.nota||a.vote_average||0));
+  else if(sort==='eps_desc')list.sort((a,b)=>getStats(b).totalEps-getStats(a).totalEps);
+  else if(sort==='progress'){list.sort((a,b)=>{const sa=getStats(a),sb=getStats(b);const pa=sa.totalEps?sa.linkedEps/sa.totalEps:0,pb=sb.totalEps?sb.linkedEps/sb.totalEps:0;return pb-pa;});}
+  const ri=document.getElementById('resultsInfo');
+  ri.innerHTML=allSeries.length?`<strong>${list.length}</strong> de ${allSeries.length} séries${q?' · "'+q+'"':''}` :'';
+  renderList(list);
+}
+function renderList(list){
+  const c=document.getElementById('seriesList');
+  if(!list.length&&!allSeries.length){c.innerHTML=`<div class="empty-state"><div class="empty-icon">📺</div><h3>Nenhuma Série</h3><p>Toque em "GitHub" para carregar</p></div>`;return;}
+  if(!list.length){c.innerHTML=`<div class="empty-state"><div class="empty-icon">🔍</div><h3>Sem Resultado</h3><p>Tente outros filtros</p></div>`;return;}
+  c.innerHTML=`<div class="series-list">${list.map((s,i)=>renderSerieCard(s,i)).join('')}</div>`;
+}
+
+function renderSerieCard(s,i){
+  const t=getTitle(s),yr=s.ano||s.year||'',rat=s.nota||s.vote_average||0;
+  const{totalEps,linkedEps,seasons}=getStats(s);
+  const pct=totalEps?Math.round(linkedEps/totalEps*100):0;
+  const sid=s.id||i;
+  const tSafe=t.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  const posterSafe=s.poster?s.poster.replace(/'/g,'%27'):'';
+
+  const poster=s.poster
+    ?`<img class="serie-poster" src="${s.poster}" alt="${t}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    :'';
+  const noPoster=`<div class="serie-no-poster" ${s.poster?'style="display:none"':''}>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/></svg>
+    <span>SEM CAPA</span></div>`;
+
+  const seasonsHtml=seasons.map(season=>{
+    const eps=season.episodes||[];
+    const done=eps.filter(e=>(e.link||e.video_link||'').trim()).length;
+    const allDone=done===eps.length&&eps.length>0;
+    const epsRows=eps.map(ep=>{
+      const lnk=(ep.link||ep.video_link||'').trim();
+      const epNum=ep.ep||ep.episode_number;
+      const epName=ep.titulo||ep.name||`Episódio ${epNum}`;
+      return `<div class="ep-row">
+        <span class="ep-num">E${String(epNum).padStart(2,'0')}</span>
+        <span class="ep-name">${epName}</span>
+        ${lnk?`<a class="ep-play" href="${lnk}" target="_blank" rel="noopener">▶ Assistir</a>`:`<span class="ep-nolink">sem link</span>`}
+      </div>`;
+    }).join('');
+    return `<div class="season-block">
+      <div class="season-label">📺 Temp ${season.temporada||season.season_number}
+        <span class="${allDone?'s-prog done':'s-prog'}">${done}/${eps.length}</span></div>
+      <div class="eps-grid">${epsRows||'<div class="ep-row"><span style="font-size:.7rem;color:var(--muted)">Sem episódios</span></div>'}</div>
+    </div>`;
+  }).join('');
+
+  const id=`serie_${sid}`;
+  return `<div class="serie-card" style="animation-delay:${Math.min(i,15)*.04}s">
+    <div class="serie-main">
+      <div class="serie-poster-wrap">${poster}${noPoster}</div>
+      <div class="serie-body">
+        <div class="serie-title">${t}</div>
+        <div class="serie-meta">
+          ${yr?`<span class="chip chip-year">${yr}</span>`:''}
+          ${rat?`<span class="chip chip-rating">★ ${Number(rat).toFixed(1)}</span>`:''}
+          ${seasons.length?`<span class="chip chip-purple">📺 ${seasons.length}T</span>`:''}
+          ${totalEps?`<span class="chip chip-eps">${totalEps}ep</span>`:''}
+          ${totalEps?(linkedEps>0?`<span class="chip chip-progress">${linkedEps}/${totalEps} ✓</span>`:`<span class="chip chip-zero">Sem links</span>`):''}
+        </div>
+        ${totalEps?`<div class="pbar"><div class="pfill ${pct===100?'full':''}" style="width:${pct}%"></div></div>`:''}
+      </div>
+    </div>
+    ${seasons.length?`
+    <div class="seasons-section">
+      <button class="seasons-toggle" id="toggle_${id}" onclick="toggleSeasons('${id}')">
+        <span style="flex-shrink:0">📺 ${seasons.length}T · ${totalEps}eps</span>
+        <div class="tog-bar"><div class="tog-fill ${pct===100?'full':''}" style="width:${pct}%"></div></div>
+        <span style="font-size:.63rem;color:var(--muted);white-space:nowrap">${pct}%</span>
+        <span class="seasons-toggle arr" style="font-size:.6rem;transition:transform .2s">▼</span>
+      </button>
+      <div class="seasons-body" id="body_${id}">${seasonsHtml}</div>
+    </div>`:''}
+    <div class="card-actions">
+      <button class="ca-btn ca-idx" onclick="editInIndex_sid(${sid})">✏️ Index</button>
+      <button class="ca-btn ca-eps" onclick="openEditModal(${sid})">➕ Eps</button>
+      <button class="ca-btn ca-mon ${isWatching(sid)?'on':''}" id="watchbtn_${sid}" onclick="toggleWatch(${sid},'${tSafe}','${posterSafe}')">
+        ${isWatching(sid)?'🔔 ON':'🔕 Monitor'}
+      </button>
+    </div>
+  </div>`;
+}
+
+function toggleSeasons(id){
+  const tog=document.getElementById('toggle_'+id);
+  const body=document.getElementById('body_'+id);
+  if(!tog||!body)return;
+  tog.classList.toggle('open');body.classList.toggle('open');
+  // rotate arrow
+  const arr=tog.querySelector('.arr');
+  if(arr)arr.style.transform=tog.classList.contains('open')?'rotate(180deg)':'rotate(0deg)';
+}
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  t.className=type||'success';t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// Edit in Index
+function editInIndex_sid(sid){const s=allSeries.find((x,i)=>(x.id||i)===sid);if(s)editInIndex(s);}
+function editInIndex(s){
+  const serie={
+    id:s.id||0,title:s.titulo||s.title||'',year:s.ano||s.year||'',
+    poster_path:s.poster_path||(s.poster?s.poster.replace(/https:\/\/image\.tmdb\.org\/t\/p\/\w+/,''):''),
+    vote_average:s.nota||s.vote_average||0,
+    seasons:(s.seasons||[]).map(season=>({
+      season_number:season.temporada||season.season_number,
+      episodes:(season.episodes||[]).map(ep=>({episode_number:ep.ep||ep.episode_number,name:ep.titulo||ep.name||`Episódio ${ep.ep||ep.episode_number}`,video_link:ep.link||ep.video_link||''}))
+    }))
+  };
+  let cl={movies:[],series:[]};
+  try{const s2=localStorage.getItem('cinelist_v2');if(s2)cl=JSON.parse(s2);}catch(e){}
+  const idx=cl.series.findIndex(x=>x.id===serie.id);
+  if(idx>=0)cl.series[idx]=serie;else cl.series.unshift(serie);
+  localStorage.setItem('cinelist_v2',JSON.stringify(cl));
+  localStorage.setItem('cinelist_open_serie',String(serie.id));
+  showToast(`"${serie.title}" enviada pro Index!`,'success');
+  setTimeout(()=>{window.location.href='index.html';},600);
+}
+
+// Watch
+function toggleWatch(id,title,poster){
+  if(watchList[id]){delete watchList[id];showToast('Removido do monitor','error');}
+  else{
+    const s=allSeries.find((x,i)=>(x.id||i)===id);
+    const seasons=s?(s.seasons||[]).map(ss=>({season_number:ss.temporada||ss.season_number,episode_count:(ss.episodes||[]).length})):[];
+    watchList[id]={id,title,poster:poster||null,seasons};
+    showToast(`Monitorando "${title}" 🔔`,'success');
+  }
+  saveWatchList();
+  const btn=document.getElementById(`watchbtn_${id}`);
+  if(btn){btn.textContent=watchList[id]?'🔔 ON':'🔕 Monitor';btn.classList.toggle('on',!!watchList[id]);}
+}
+
+// Auto check
+async function autoCheckOnLoad(){
+  const ids=Object.keys(watchList);
+  if(!ids.length)return;
+  let totalNew=0;
+  for(const id of ids){
+    const entry=watchList[id];
+    try{
+      const r=await fetch(`${TMDB_BASE_SG}/tv/${id}?api_key=${TMDB_KEY_SG}&language=pt-BR`);
+      if(!r.ok)continue;
+      const d=await r.json();
+      const tmdbS=(d.seasons||[]).filter(s=>s.season_number>0);
+      const km={};(entry.seasons||[]).forEach(s=>{km[s.season_number]=s.episode_count;});
+      for(const ts of tmdbS){if(!km[ts.season_number]||ts.episode_count>km[ts.season_number]){totalNew++;break;}}
+      await new Promise(r=>setTimeout(r,100));
+    }catch(e){}
+  }
+  if(totalNew>0){
+    const btn=document.getElementById('monitorBtn');
+    if(btn)btn.innerHTML=`🔔 Monitor <span style="background:var(--accent);color:#fff;border-radius:10px;font-size:.6rem;font-weight:800;padding:1px 6px">${totalNew}</span>`;
+    showToast(`🔔 ${totalNew} série(s) com novidades!`,'success');
+  }
+}
+
+async function checkAllUpdates(){
+  const ids=Object.keys(watchList);
+  if(!ids.length){document.getElementById('tmdbMonitorResults').innerHTML=`<p style="font-size:.76rem;color:var(--muted);font-style:italic">Nenhuma série monitorada. Ative "Monitor" nos cards.</p>`;return;}
+  const btn=document.getElementById('tmdbCheckBtn');
+  btn.disabled=true;btn.innerHTML=`<div class="spin" style="width:12px;height:12px;border:2px solid rgba(46,194,126,.3);border-top-color:var(--green);border-radius:50%;animation:spin .65s linear infinite"></div> Verificando...`;
+  document.getElementById('tmdbMonitorResults').innerHTML=`<p style="font-size:.73rem;color:var(--muted)">Verificando ${ids.length} série(s)...</p>`;
+  const items=[];
+  for(const id of ids){
+    const entry=watchList[id];
+    try{
+      const r=await fetch(`${TMDB_BASE_SG}/tv/${id}?api_key=${TMDB_KEY_SG}&language=pt-BR`);
+      const d=await r.json();
+      const tmdbS=(d.seasons||[]).filter(s=>s.season_number>0);
+      const km={};(entry.seasons||[]).forEach(s=>{km[s.season_number]=s.episode_count;});
+      const nS=[],nE=[];
+      for(const ts of tmdbS){if(!km[ts.season_number])nS.push(`T${ts.season_number}(${ts.episode_count}eps)`);else if(ts.episode_count>km[ts.season_number])nE.push(`T${ts.season_number}:+${ts.episode_count-km[ts.season_number]}ep`);}
+      items.push({entry,nS,nE,tmdbS,d});
+    }catch(e){items.push({entry,error:e.message});}
+  }
+  let html='<div class="tmdb-results-list">';
+  for(const it of items){
+    const hasNew=(it.nS||[]).length||(it.nE||[]).length;
+    const pu=it.entry.poster||(it.d?.poster_path?'https://image.tmdb.org/t/p/w92'+it.d.poster_path:null);
+    const ph=pu?`<img class="tri-thumb" src="${pu}" alt="" onerror="this.style.display='none'">`:`<div style="width:38px;height:57px;background:var(--surface);border-radius:6px;flex-shrink:0"></div>`;
+    let det='';
+    if(it.error)det=`<span class="okbadge" style="color:var(--accent)">Erro</span>`;
+    else if(!hasNew)det=`<span class="okbadge">✓ OK</span>`;
+    else{if(it.nS.length)det+=`<span class="nbadge">🆕 ${it.nS.join(' ')}</span>`;if(it.nE.length)det+=`<span class="nbadge">📺 ${it.nE.join(' ')}</span>`;}
+    html+=`<div class="tri ${hasNew?'new':''}">
+      ${ph}
+      <div class="tri-info"><div class="tri-title">${it.entry.title}</div><div class="tri-detail">${det}</div></div>
+      ${hasNew?`<span class="nbadge">NOVO!</span>`:''}
+    </div>`;
+    if(!it.error&&it.tmdbS)watchList[it.entry.id].seasons=it.tmdbS.map(s=>({season_number:s.season_number,episode_count:s.episode_count}));
+  }
+  html+='</div>';
+  document.getElementById('tmdbMonitorResults').innerHTML=html;
+  saveWatchList();
+  const mb=document.getElementById('monitorBtn');if(mb)mb.textContent='🔔 Monitor';
+  btn.disabled=false;btn.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.28-4.8"/></svg> Verificar`;
+}
+
+// Modal Edição
+let editSerie=null;
+function openEditModal(sid){
+  const s=allSeries.find((x,i)=>(x.id||i)===sid);
+  if(!s)return;
+  editSerie=JSON.parse(JSON.stringify(s));
+  const t=getTitle(editSerie);
+  document.getElementById('editModalPoster').innerHTML=editSerie.poster?`<img class="modal-head-poster" src="${editSerie.poster}" alt="${t}">`:`<div class="modal-head-noposter">SEM CAPA</div>`;
+  document.getElementById('editModalTitle').textContent=t;
+  document.getElementById('editModalSubtitle').textContent=`TMDB ${editSerie.id||'?'} · ${(editSerie.seasons||[]).length}T`;
+  renderEditModalBody();
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal(){document.getElementById('editModal').classList.remove('open');editSerie=null;}
+
+function renderEditModalBody(){
+  const seasons=editSerie.seasons||[];
+  const seasHtml=seasons.map((season,si)=>{
+    const sn=season.temporada||season.season_number;
+    const eps=season.episodes||[];
+    const done=eps.filter(e=>(e.link||e.video_link||'').trim()).length;
+    const allDone=done===eps.length&&eps.length>0;
+    const epsHtml=eps.map((ep,ei)=>{
+      const epNum=ep.ep||ep.episode_number;
+      const epName=ep.titulo||ep.name||`Episódio ${epNum}`;
+      const lnk=(ep.link||ep.video_link||'').trim();
+      return `<div class="mep-row" id="meprow_${si}_${ei}">
+        <div class="mep-top"><span class="mep-num">E${String(epNum).padStart(2,'0')}</span><span class="mep-name">${epName}</span></div>
+        <div class="mep-bot">
+          ${lnk
+            ?`<div class="mep-has"><a class="mep-play" href="${lnk}" target="_blank">▶ Assistir</a><button class="mep-edit" onclick="modalClearEpLink(${si},${ei})">editar</button></div>`
+            :`<input id="mepl_${si}_${ei}" class="mep-inp" type="url" placeholder="Link do episódio..."/><button class="mep-ok" onclick="modalSaveEpLink(${si},${ei})">OK</button>`}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="mseas-block">
+      <div class="mseas-head" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+        <span class="mseas-tag">T${sn}</span>
+        <span>Temporada ${sn}</span>
+        <span class="${allDone?'mseas-prog done':'mseas-prog'}">${done}/${eps.length}</span>
+        <span class="mseas-arr">▼</span>
+      </div>
+      <div class="mseas-body">${epsHtml||'<p style="padding:12px 13px;font-size:.72rem;color:var(--muted)">Sem episódios</p>'}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('editModalBody').innerHTML=`
+    <div class="msec-title">📺 Temporadas e Episódios <span></span></div>
+    ${seasHtml||'<p style="color:var(--muted);font-size:.78rem;font-style:italic;margin-bottom:12px">Sem temporadas</p>'}
+    <div class="msec-title" style="margin-top:16px">🔄 Buscar do TMDB <span></span></div>
+    <button class="modal-tmdb-btn" id="tmdbFetchBtn" onclick="fetchMissingFromTmdb()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.28-4.8"/></svg>
+      Buscar Temporadas/Eps Faltando
+    </button>
+    <div id="tmdbFetchStatus"></div>
+    <div class="msec-title" style="margin-top:16px">➕ Adicionar Manualmente <span></span></div>
+    <div class="modal-add-row">
+      <input id="newSeasonNum" class="modal-add-input" type="number" min="1" placeholder="Nº Temporada"/>
+      <input id="newEpsCount"  class="modal-add-input" type="number" min="1" placeholder="Qtd Eps"/>
+      <button class="modal-add-btn" onclick="modalAddSeason()">+ Add</button>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeEditModal()">Fechar</button>
+      <button class="modal-btn-gh" onclick="saveSerieToGithub(true)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        Salvar GitHub
+      </button>
+      <button class="modal-btn-send" onclick="modalSendToIndex()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        Enviar pro Index
+      </button>
+    </div>`;
+}
+
+// ── SALVAR SÉRIE NO GITHUB ─────────────────────────────────────
+async function saveSerieToGithub(showMsg){
+  if(!ghCfg.repo){showToast('Configure o repositório primeiro','error');return;}
+  if(!editSerie){return;}
+
+  // Atualiza allSeries em memória com os dados do editSerie
+  const idx=allSeries.findIndex((x,i)=>(x.id||i)===(editSerie.id||0));
+  if(idx>=0){
+    // Preserva campos originais (poster, nota, etc) e atualiza seasons
+    allSeries[idx]={...allSeries[idx],seasons:editSerie.seasons};
+  }
+
+  // Indica salvamento na modal
+  const statusEl=document.getElementById('tmdbFetchStatus');
+  if(statusEl){statusEl.textContent='💾 Salvando no GitHub...';statusEl.style.color='var(--purple)';}
+
+  try{
+    // Busca SHA atual do arquivo
+    const url=`https://api.github.com/repos/${ghCfg.repo}/contents/${ghFilePath()}`;
+    const headers={'Accept':'application/vnd.github.v3+json'};
+    const tok=ghCfg.token||GH_TOKEN;
+    if(tok)headers['Authorization']=`Bearer ${tok}`;
+
+    let sha=null;
+    let ghList=[];
+    const checkRes=await fetch(url,{headers});
+    if(checkRes.ok){
+      const ex=await checkRes.json();
+      sha=ex.sha;
+      try{
+        const decoded=JSON.parse(decodeURIComponent(escape(atob(ex.content.replace(/\n/g,'')))));
+        ghList=Array.isArray(decoded)?decoded:(decoded.series||[]);
+      }catch(e2){ghList=[];}
+    }
+
+    // Mescla: atualiza a série editada no array do GitHub
+    const serieIdx=ghList.findIndex(x=>x.id===editSerie.id);
+    if(serieIdx>=0){
+      ghList[serieIdx]={...ghList[serieIdx],seasons:editSerie.seasons};
+    } else {
+      ghList.unshift({...editSerie});
+    }
+
+    // Codifica e envia (salva TODOS os episódios, com e sem link)
+    const utf8=new TextEncoder().encode(JSON.stringify(ghList,null,2));
+    let bin='';const chunk=8192;
+    for(let i=0;i<utf8.length;i+=chunk)bin+=String.fromCharCode(...utf8.subarray(i,i+chunk));
+    const content=btoa(bin);
+
+    const body={message:`CineList: atualiza "${editSerie.titulo||editSerie.title}" — ${new Date().toLocaleString('pt-BR')}`,content};
+    if(sha)body.sha=sha;
+    if(ghCfg.branch)body.branch=ghCfg.branch;
+
+    const res=await fetch(url.split('?')[0],{
+      method:'PUT',
+      headers:{...headers,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+
+    if(res.ok){
+      if(statusEl){statusEl.textContent='✓ Salvo no GitHub!';statusEl.style.color='var(--green)';}
+      if(showMsg!==false)showToast('✓ Salvo no GitHub!','success');
+      // Atualiza a visualização do card
+      updateCounters();filterRender();
+    } else {
+      const err=await res.json();
+      const msg=res.status===401?'Token inválido':res.status===404?'Repo não encontrado':`Erro ${res.status}`;
+      if(statusEl){statusEl.textContent='Erro: '+msg;statusEl.style.color='var(--accent)';}
+      showToast('Erro GitHub: '+msg,'error');
+    }
+  }catch(e){
+    if(statusEl){statusEl.textContent='Erro: '+e.message;statusEl.style.color='var(--accent)';}
+    showToast('Erro: '+e.message,'error');
+  }
+}
+
+function modalSaveEpLink(si,ei){
+  const inp=document.getElementById(`mepl_${si}_${ei}`);if(!inp)return;
+  const val=inp.value.trim();
+  if(!val){showToast('Digite um link antes de salvar','error');return;}
+  const ep=editSerie.seasons[si].episodes[ei];
+  if('link' in ep)ep.link=val;else ep.video_link=val;
+  renderEditModalBody();
+  const h=document.querySelectorAll('.mseas-head');
+  if(h[si]){h[si].classList.add('open');h[si].nextElementSibling.classList.add('open');}
+  showToast('Link salvo!','success');
+  // Salva TUDO no GitHub imediatamente
+  saveSerieToGithub(false);
+}
+function modalClearEpLink(si,ei){
+  const ep=editSerie.seasons[si].episodes[ei];
+  if('link' in ep)ep.link='';else ep.video_link='';
+  renderEditModalBody();
+  const h=document.querySelectorAll('.mseas-head');
+  if(h[si]){h[si].classList.add('open');h[si].nextElementSibling.classList.add('open');}
+  saveSerieToGithub(false);
+}
+function modalAddSeason(){
+  const sn=parseInt(document.getElementById('newSeasonNum').value)||0;
+  const eps=parseInt(document.getElementById('newEpsCount').value)||1;
+  if(!sn){showToast('Informe o nº da temporada','error');return;}
+  if(!editSerie.seasons)editSerie.seasons=[];
+  if(editSerie.seasons.find(s=>(s.temporada||s.season_number)===sn)){showToast(`T${sn} já existe`,'error');return;}
+  editSerie.seasons.push({season_number:sn,episodes:Array.from({length:eps},(_,i)=>({episode_number:i+1,name:`Episódio ${i+1}`,video_link:''}))});
+  editSerie.seasons.sort((a,b)=>(a.temporada||a.season_number)-(b.temporada||b.season_number));
+  renderEditModalBody();
+  showToast(`T${sn} adicionada! Salvando...`,'success');
+  // Salva a temporada nova no GitHub (com todos os eps, sem links ainda)
+  saveSerieToGithub(true);
+}
+async function fetchMissingFromTmdb(){
+  const tmdbId=editSerie.id;if(!tmdbId){showToast('Sem ID TMDB','error');return;}
+  const btn=document.getElementById('tmdbFetchBtn');
+  const statusEl=document.getElementById('tmdbFetchStatus');
+  btn.disabled=true;statusEl.textContent='⏳ Buscando...';statusEl.style.color='var(--purple)';
+  try{
+    const r=await fetch(`${TMDB_BASE_SG}/tv/${tmdbId}?api_key=${TMDB_KEY_SG}&language=pt-BR`);
+    const d=await r.json();
+    const tmdbS=(d.seasons||[]).filter(s=>s.season_number>0);
+    let added=0,updEps=0;
+    if(!editSerie.seasons)editSerie.seasons=[];
+    for(const ts of tmdbS){
+      const sn=ts.season_number;
+      const existing=editSerie.seasons.find(s=>(s.temporada||s.season_number)===sn);
+      const sr=await fetch(`${TMDB_BASE_SG}/tv/${tmdbId}/season/${sn}?api_key=${TMDB_KEY_SG}&language=pt-BR`);
+      const sd=await sr.json();
+      if(!existing){editSerie.seasons.push({season_number:sn,episodes:(sd.episodes||[]).map(ep=>({episode_number:ep.episode_number,name:ep.name||`Episódio ${ep.episode_number}`,video_link:''}))});added++;}
+      else{const en=new Set((existing.episodes||[]).map(e=>e.ep||e.episode_number));for(const tep of(sd.episodes||[])){if(!en.has(tep.episode_number)){existing.episodes.push({episode_number:tep.episode_number,name:tep.name||`Episódio ${tep.episode_number}`,video_link:''});updEps++;}}}
+    }
+    editSerie.seasons.sort((a,b)=>(a.temporada||a.season_number)-(b.temporada||b.season_number));
+    const msg=added||updEps?`✓ ${added} temp nova(s) · ${updEps} ep(s) novos`:'✓ Já atualizado!';
+    statusEl.textContent=msg;statusEl.style.color='var(--green)';
+    renderEditModalBody();showToast(msg,'success');
+    // Salva estrutura atualizada no GitHub
+    if(added||updEps)saveSerieToGithub(false);
+  }catch(e){statusEl.textContent='Erro: '+e.message;statusEl.style.color='var(--accent)';}
+  finally{btn.disabled=false;btn.textContent='🔄 Buscar Temporadas/Eps Faltando';}
+}
+function modalSendToIndex(){if(!editSerie)return;editInIndex(editSerie);closeEditModal();}
+
+if(ghCfg.repo)loadFromGithub();
+</script>
+</body>
+</html>
